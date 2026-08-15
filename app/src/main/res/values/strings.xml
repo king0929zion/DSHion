@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">DSHion</string>
+    <string name="status_preparing">正在准备本地 DeepSeek Harness 环境…</string>
+    <string name="retry">重新启动</string>
+</resources>
