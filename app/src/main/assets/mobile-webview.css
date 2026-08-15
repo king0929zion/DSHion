@@ -1,0 +1,102 @@
+:root {
+  --dshion-safe-top: env(safe-area-inset-top, 0px);
+  --dshion-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --dshion-touch: 44px;
+}
+html.dshion-android,
+html.dshion-android body,
+html.dshion-android #root {
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 100vw;
+  min-height: 100%;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+html.dshion-android body {
+  margin: 0;
+  padding: var(--dshion-safe-top) env(safe-area-inset-right, 0px) var(--dshion-safe-bottom) env(safe-area-inset-left, 0px);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+html.dshion-android *,
+html.dshion-android *::before,
+html.dshion-android *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+html.dshion-android button,
+html.dshion-android [role="button"],
+html.dshion-android input,
+html.dshion-android textarea,
+html.dshion-android select,
+html.dshion-android summary {
+  min-height: var(--dshion-touch);
+}
+html.dshion-android input,
+html.dshion-android textarea,
+html.dshion-android select {
+  font-size: 16px !important;
+}
+html.dshion-android pre,
+html.dshion-android code,
+html.dshion-android .terminal,
+html.dshion-android [data-terminal] {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+html.dshion-android table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+html.dshion-android img,
+html.dshion-android video,
+html.dshion-android canvas,
+html.dshion-android svg {
+  max-width: 100%;
+}
+html.dshion-android dialog,
+html.dshion-android [role="dialog"] {
+  max-width: calc(100vw - 20px) !important;
+  max-height: calc(100dvh - var(--dshion-safe-top) - var(--dshion-safe-bottom) - 20px) !important;
+}
+
+@media (max-width: 720px) {
+  html.dshion-android body { overflow: hidden; }
+  html.dshion-android #root { height: calc(100dvh - var(--dshion-safe-top) - var(--dshion-safe-bottom)); }
+  html.dshion-android main,
+  html.dshion-android [role="main"] {
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+  }
+  html.dshion-android aside,
+  html.dshion-android [data-sidebar] {
+    max-width: min(88vw, 360px) !important;
+  }
+  html.dshion-android [class*="sidebar"] {
+    max-width: min(88vw, 360px);
+  }
+  html.dshion-android [class*="toolbar"],
+  html.dshion-android header {
+    min-height: 52px;
+  }
+  html.dshion-android [class*="split-pane"],
+  html.dshion-android [class*="resizable-panel"] {
+    min-width: 0 !important;
+  }
+  html.dshion-android [data-radix-popper-content-wrapper] {
+    max-width: 100vw !important;
+  }
+}
+
+@media (display-mode: standalone), (max-width: 420px) {
+  html.dshion-android [role="dialog"] {
+    width: calc(100vw - 12px) !important;
+    margin: 6px !important;
+  }
+}
