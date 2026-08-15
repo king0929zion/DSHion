@@ -1,0 +1,101 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      dsh_version:
+        description: DeepSeek Harness npm version
+        required: false
+        default: 0.1.0-rc.5
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DSH_VERSION: ${{ inputs.dsh_version || '0.1.0-rc.5' }}
+  NODE_VERSION: 22.19.0
+  GRADLE_VERSION: 8.9
+
+jobs:
+  build:
+    name: Build ARM64 APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache generated Linux runtime
+        id: runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/src/main/assets/ubuntu-rootfs-arm64.tar.xz
+            app/src/main/assets/proot-libs-arm64.tar.xz
+            app/src/main/jniLibs/arm64-v8a/libproot.so
+          key: dshion-runtime-v3-${{ runner.os }}-${{ env.DSH_VERSION }}-${{ env.NODE_VERSION }}
+
+      - name: Prepare PRoot runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: bash ./scripts/prepare-proot.sh "$GITHUB_WORKSPACE"
+
+      - name: Prepare Ubuntu + DeepSeek Harness
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: bash ./scripts/prepare-rootfs.sh "$GITHUB_WORKSPACE"
+
+      - name: Verify embedded runtime
+        run: |
+          test -s app/src/main/jniLibs/arm64-v8a/libproot.so
+          test -s app/src/main/assets/proot-libs-arm64.tar.xz
+          test -s app/src/main/assets/ubuntu-rootfs-arm64.tar.xz
+          file app/src/main/jniLibs/arm64-v8a/libproot.so
+          ls -lh app/src/main/assets/*.xz
+
+      - name: Install Gradle
+        run: |
+          curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d "$HOME"
+          echo "$HOME/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Build installable APK
+        run: gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/DSHion-${GITHUB_SHA::7}-arm64.apk"
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DSHion-Android-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
