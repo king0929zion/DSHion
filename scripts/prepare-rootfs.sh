@@ -24,9 +24,21 @@ curl --retry 3 -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" -
 (cd "$WORK" && grep " ${NODE_TAR}$" SHASUMS256.txt | sha256sum -c -)
 tar -xJf "$WORK/$NODE_TAR" -C "$ROOTFS/usr/local" --strip-components=1
 
-# Ubuntu Base may ship /tmp without the permissions apt expects.
-sudo mkdir -p "$ROOTFS/tmp" "$ROOTFS/var/tmp"
-sudo chmod 1777 "$ROOTFS/tmp" "$ROOTFS/var/tmp"
+# Ubuntu Base is a filesystem tarball, so recreate the runtime filesystem bits
+# that a normal boot would provide before running apt inside the chroot.
+sudo mkdir -p "$ROOTFS/tmp" "$ROOTFS/var/tmp" "$ROOTFS/dev/pts" "$ROOTFS/dev/shm" "$ROOTFS/proc" "$ROOTFS/sys"
+sudo chmod 1777 "$ROOTFS/tmp" "$ROOTFS/var/tmp" "$ROOTFS/dev/shm"
+while read -r name type major minor mode; do
+  sudo rm -f "$ROOTFS/dev/$name"
+  sudo mknod "$ROOTFS/dev/$name" "$type" "$major" "$minor"
+  sudo chmod "$mode" "$ROOTFS/dev/$name"
+done <<'DEVNODES'
+null c 1 3 666
+zero c 1 5 666
+random c 1 8 666
+urandom c 1 9 666
+tty c 5 0 666
+DEVNODES
 
 sudo apt-get update -qq
 sudo apt-get install -y -qq qemu-user-static binfmt-support
@@ -36,7 +48,7 @@ sudo rm -f "$ROOTFS/etc/resolv.conf"
 sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
 CHROOT=(sudo chroot "$ROOTFS" /usr/bin/qemu-aarch64-static /bin/bash -lc)
-"${CHROOT[@]}" 'export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash coreutils findutils grep sed tar xz-utils procps python3 make g++ pkg-config; rm -rf /var/lib/apt/lists/*'
+"${CHROOT[@]}" 'test -w /dev/null; echo dshion-device-check >/dev/null; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash coreutils findutils grep sed tar xz-utils procps python3 make g++ pkg-config gpgv; rm -rf /var/lib/apt/lists/*'
 "${CHROOT[@]}" "node --version && npm --version && corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate && pnpm --version"
 "${CHROOT[@]}" "rm -rf /opt/deepseek-harness; git clone --depth 1 --branch '${DSH_REF}' https://github.com/deepseek-ai/deepseek-harness.git /opt/deepseek-harness || { git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git /opt/deepseek-harness; cd /opt/deepseek-harness; git checkout '${DSH_REF}'; }"
 "${CHROOT[@]}" 'cd /opt/deepseek-harness && CI=1 pnpm install --frozen-lockfile && pnpm run build'
