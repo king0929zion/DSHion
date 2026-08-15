@@ -27,6 +27,7 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq qemu-user-static binfmt-support
 if command -v update-binfmts >/dev/null 2>&1; then sudo update-binfmts --enable qemu-aarch64 || true; fi
 sudo cp /usr/bin/qemu-aarch64-static "$ROOTFS/usr/bin/"
+sudo rm -f "$ROOTFS/etc/resolv.conf"
 sudo cp /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
 
 sudo chroot "$ROOTFS" /usr/bin/qemu-aarch64-static /bin/bash -lc 'export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --no-install-recommends ca-certificates curl git openssh-client bash coreutils findutils grep sed tar xz-utils procps; rm -rf /var/lib/apt/lists/*'
